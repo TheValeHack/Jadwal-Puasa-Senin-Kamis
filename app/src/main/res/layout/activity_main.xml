@@ -36,15 +36,16 @@
         app:layout_constraintEnd_toEndOf="parent"
         />
 
-    <ListView
-        android:id="@+id/lv_jadwal"
-        android:layout_width="match_parent"
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_jadwal"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Hello World!"
         app:layout_constraintWidth_percent="0.9"
         android:layout_marginTop="20dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/spinnerMonth" />
+        app:layout_constraintTop_toBottomOf="@id/spinnerMonth"
+        />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

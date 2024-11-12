@@ -1,72 +1,89 @@
 package com.example.puasasunnah
 
+import Jadwal
 import android.os.Bundle
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.puasasunnah.databinding.ActivityMainBinding
 import com.example.puasasunnah.model.ApiResponse
 import com.example.puasasunnah.network.ApiClient
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import java.util.ArrayList
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        getJadwalList(1)
+        val arrayMonth = listOf(
+            "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+            "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+        )
+        val monthAdapter = ArrayAdapter(
+            this@MainActivity,
+            android.R.layout.simple_spinner_item,
+            arrayMonth
+        )
+        monthAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerMonth.adapter = monthAdapter
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
-
-        with(binding){
-            val arrayMonth = listOf("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember")
-            val monthAdapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_item, arrayMonth)
-            monthAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-            spinnerMonth.adapter = monthAdapter
-
-            spinnerMonth.onItemSelectedListener =
-                object : AdapterView.OnItemSelectedListener {
-                    override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) {
-                        getJadwalList(p2 + 1)
-                    }
-
-                    override fun onNothingSelected(p0: AdapterView<*>?) {
-
+        binding.spinnerMonth.onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                    val selectedMonth = position + 1
+                    getJadwalList(selectedMonth) { jadwalList ->
+                        val adapterJadwal = JadwalAdapter(jadwalList) { jadwal ->
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Tanggal ${jadwal.date} adalah ${jadwal.type}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        binding.rvJadwal.apply {
+                            layoutManager = LinearLayoutManager(this@MainActivity)
+                            adapter = adapterJadwal
+                        }
                     }
                 }
-        }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) {
+
+                }
+            }
     }
 
-    fun getJadwalList(month: Int){
+    private fun getJadwalList(month: Int, callback: (List<Jadwal>) -> Unit) {
         val client = ApiClient.getInstance()
         val responseApi = client.getApiResponse(month)
-        val jadwalList = ArrayList<String>()
 
         responseApi.enqueue(object : Callback<ApiResponse> {
-            override fun onResponse(p0: Call<ApiResponse>, p1: Response<ApiResponse>) {
-                for(i in p1.body()!!.data){
-                    jadwalList.add(i.humanDate)
+            override fun onResponse(call: Call<ApiResponse>, response: Response<ApiResponse>) {
+                val jadwalList = mutableListOf<Jadwal>()
+                if (response.isSuccessful && response.body() != null) {
+                    for (item in response.body()!!.data) {
+                        jadwalList.add(
+                            Jadwal(
+                                type = item.type.name,
+                                date = item.date,
+                                humanDate = item.humanDate
+                            )
+                        )
+                    }
                 }
-                val listAdapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_list_item_1, jadwalList)
-                binding.lvJadwal.adapter = listAdapter
+                callback(jadwalList)
             }
-            override fun onFailure(p0: Call<ApiResponse>, p1: Throwable) {
-                Toast.makeText(this@MainActivity, "koneksi error", Toast.LENGTH_LONG).show()
+
+            override fun onFailure(call: Call<ApiResponse>, t: Throwable) {
+                Toast.makeText(this@MainActivity, "Koneksi error: ${t.message}", Toast.LENGTH_LONG).show()
+                callback(emptyList())
             }
         })
     }
